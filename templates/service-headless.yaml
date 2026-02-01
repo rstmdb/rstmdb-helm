@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "rstmdb.headlessServiceName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "rstmdb.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  clusterIP: None
+  ports:
+    - name: rcp
+      port: {{ .Values.service.port }}
+      targetPort: rcp
+      protocol: TCP
+    {{- if .Values.metrics.enabled }}
+    - name: metrics
+      port: 9090
+      targetPort: metrics
+      protocol: TCP
+    {{- end }}
+  selector:
+    {{- include "rstmdb.selectorLabels" . | nindent 4 }}

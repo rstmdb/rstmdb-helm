@@ -1,0 +1,6 @@
+# Artifact Hub repository metadata file
+# https://artifacthub.io/docs/topics/repositories/
+repositoryID: rstmdb
+owners:
+  - name: rstmdb
+    email: rstmdb@users.noreply.github.com

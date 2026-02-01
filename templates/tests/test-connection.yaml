@@ -1,0 +1,37 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ include "rstmdb.fullname" . }}-test-connection"
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "rstmdb.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": test
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  containers:
+    - name: wget
+      image: busybox:1.36
+      command: ['sh', '-c']
+      args:
+        - |
+          echo "Testing connection to {{ include "rstmdb.fullname" . }}:{{ .Values.service.port }}..."
+          # Test TCP connection to RCP port
+          if nc -z {{ include "rstmdb.fullname" . }} {{ .Values.service.port }}; then
+            echo "RCP port {{ .Values.service.port }} is reachable"
+          else
+            echo "Failed to connect to RCP port {{ .Values.service.port }}"
+            exit 1
+          fi
+          {{- if .Values.metrics.enabled }}
+          # Test metrics endpoint
+          echo "Testing metrics endpoint..."
+          if wget -q -O- http://{{ include "rstmdb.metricsServiceName" . }}:9090/health; then
+            echo "Metrics health check passed"
+          else
+            echo "Metrics health check failed"
+            exit 1
+          fi
+          {{- end }}
+          echo "All tests passed!"
+  restartPolicy: Never
