@@ -1,0 +1,24 @@
+apiVersion: v1
+entries:
+  rstmdb:
+  - apiVersion: v2
+    appVersion: latest
+    created: "2026-02-01T18:54:08.548381+02:00"
+    description: A Helm chart for rstmdb - a state machine database with WAL durability
+    digest: fa6bb415d00fa7b7f26057e970889666678f85b4afc6c28b3de9d6aaffcb72c1
+    home: https://github.com/rstmdb/rstmdb
+    keywords:
+    - rstmdb
+    - state-machine
+    - database
+    - wal
+    maintainers:
+    - name: rstmdb
+    name: rstmdb
+    sources:
+    - https://github.com/rstmdb/rstmdb
+    type: application
+    urls:
+    - https://rstmdb.github.io/rstmdb-helm/rstmdb-0.1.0.tgz
+    version: 0.1.0
+generated: "2026-02-01T18:54:08.544134+02:00"
