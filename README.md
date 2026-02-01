@@ -21,7 +21,7 @@ This chart is available on [Artifact Hub](https://artifacthub.io/packages/helm/r
 Add the Helm repository:
 
 ```bash
-helm repo add rstmdb https://rstmdb.github.io/rstmdb-helm
+helm repo add rstmdb https://charts.rstmdb.com
 helm repo update
 ```
 
@@ -130,19 +130,19 @@ See [values.yaml](values.yaml) for the full list of configurable parameters.
 ### Basic Installation
 
 ```bash
-helm install rstmdb . -n rstmdb --create-namespace
+helm install rstmdb rstmdb/rstmdb -n rstmdb --create-namespace
 ```
 
 ### Production Installation
 
 ```bash
-helm install rstmdb . -n rstmdb --create-namespace -f values-production.yaml
+helm install rstmdb rstmdb/rstmdb -n rstmdb --create-namespace -f values-production.yaml
 ```
 
 ### With Custom Values
 
 ```bash
-helm install rstmdb . -n rstmdb --create-namespace \
+helm install rstmdb rstmdb/rstmdb -n rstmdb --create-namespace \
   --set replicaCount=3 \
   --set storage.persistence.size=50Gi \
   --set auth.required=true
@@ -162,7 +162,7 @@ kubectl create secret tls rstmdb-tls \
 Then install:
 
 ```bash
-helm install rstmdb . -n rstmdb --create-namespace \
+helm install rstmdb rstmdb/rstmdb -n rstmdb --create-namespace \
   --set tls.enabled=true \
   --set tls.existingSecret=rstmdb-tls
 ```
@@ -178,7 +178,7 @@ echo -n "your-secret-token" | sha256sum
 Install with the hash:
 
 ```bash
-helm install rstmdb . -n rstmdb --create-namespace \
+helm install rstmdb rstmdb/rstmdb -n rstmdb --create-namespace \
   --set auth.required=true \
   --set auth.tokenHashes[0]="<your-token-hash>"
 ```
@@ -202,7 +202,7 @@ rstmdb-cli -s localhost:7401 ping
 If you have Prometheus Operator installed, enable the ServiceMonitor:
 
 ```bash
-helm install rstmdb . -n rstmdb --create-namespace \
+helm install rstmdb rstmdb/rstmdb -n rstmdb --create-namespace \
   --set metrics.serviceMonitor.enabled=true
 ```
 

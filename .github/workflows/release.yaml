@@ -76,7 +76,7 @@ jobs:
         run: |
           cp .cr-release-packages/*.tgz gh-pages/
           cd gh-pages
-          helm repo index . --url https://rstmdb.github.io/rstmdb-helm
+          helm repo index . --url https://charts.rstmdb.com
           git add .
           git commit -m "Release ${{ steps.chart.outputs.name }}-${{ steps.chart.outputs.version }}"
           git push
