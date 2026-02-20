@@ -119,6 +119,48 @@ Return the configmap name
 {{- end }}
 
 {{/*
+Return the studio fullname
+*/}}
+{{- define "rstmdb.studioFullname" -}}
+{{- printf "%s-studio" (include "rstmdb.fullname" .) }}
+{{- end }}
+
+{{/*
+Studio labels
+*/}}
+{{- define "rstmdb.studioLabels" -}}
+helm.sh/chart: {{ include "rstmdb.chart" . }}
+{{ include "rstmdb.studioSelectorLabels" . }}
+{{- if .Chart.AppVersion }}
+app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
+{{- end }}
+app.kubernetes.io/managed-by: {{ .Release.Service }}
+{{- end }}
+
+{{/*
+Studio selector labels
+*/}}
+{{- define "rstmdb.studioSelectorLabels" -}}
+app.kubernetes.io/name: {{ include "rstmdb.name" . }}-studio
+app.kubernetes.io/instance: {{ .Release.Name }}
+app.kubernetes.io/component: studio
+{{- end }}
+
+{{/*
+Return the studio image
+*/}}
+{{- define "rstmdb.studioImage" -}}
+{{- $registryName := .Values.studio.image.registry -}}
+{{- $repositoryName := .Values.studio.image.repository -}}
+{{- $tag := .Values.studio.image.tag | default "latest" -}}
+{{- if $registryName }}
+{{- printf "%s/%s:%s" $registryName $repositoryName $tag }}
+{{- else }}
+{{- printf "%s:%s" $repositoryName $tag }}
+{{- end }}
+{{- end }}
+
+{{/*
 Generate fsync_policy value
 */}}
 {{- define "rstmdb.fsyncPolicy" -}}

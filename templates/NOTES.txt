@@ -68,4 +68,32 @@ Authentication is ENABLED. Make sure you have configured token hashes.
 TLS is ENABLED. Ensure your clients are configured to use TLS.
 {{- end }}
 
+{{- if .Values.studio.enabled }}
+
+rstmdb Studio (Web UI) is ENABLED.
+{{- if eq .Values.studio.service.type "ClusterIP" }}
+
+To access Studio from your local machine:
+
+  kubectl port-forward svc/{{ include "rstmdb.studioFullname" . }} {{ .Values.studio.service.port }}:{{ .Values.studio.service.port }} -n {{ .Release.Namespace }}
+
+Then open: http://localhost:{{ .Values.studio.service.port }}
+{{- end }}
+{{- if .Values.studio.ingress.enabled }}
+
+Studio Ingress is configured at:
+{{- range .Values.studio.ingress.hosts }}
+  http://{{ .host }}
+{{- end }}
+{{- end }}
+{{- if and .Values.studio.init.enabled (not .Values.studio.init.existingSecret) }}
+
+Default admin credentials:
+  Username: {{ .Values.studio.init.username }}
+  Password: {{ .Values.studio.init.password }}
+
+  WARNING: Change the default password in production!
+{{- end }}
+{{- end }}
+
 For more information, visit: https://github.com/rstmdb/rstmdb

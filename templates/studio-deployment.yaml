@@ -1,0 +1,133 @@
+{{- if .Values.studio.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "rstmdb.studioFullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "rstmdb.studioLabels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.studio.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "rstmdb.studioSelectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.studio.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "rstmdb.studioLabels" . | nindent 8 }}
+        {{- with .Values.studio.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "rstmdb.serviceAccountName" . }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      {{- if .Values.studio.init.enabled }}
+      initContainers:
+        - name: studio-init
+          image: {{ include "rstmdb.studioImage" . }}
+          imagePullPolicy: {{ .Values.studio.image.pullPolicy }}
+          command:
+            - rstmdb-studio
+            - init
+            - --data-dir
+            - /data
+            - --admin-user
+            - $(ADMIN_USERNAME)
+            - --admin-pass
+            - $(ADMIN_PASSWORD)
+          env:
+            {{- if .Values.studio.init.existingSecret }}
+            - name: ADMIN_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.studio.init.existingSecret }}
+                  key: username
+            - name: ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.studio.init.existingSecret }}
+                  key: password
+            {{- else }}
+            - name: ADMIN_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "rstmdb.studioFullname" . }}-admin
+                  key: username
+            - name: ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "rstmdb.studioFullname" . }}-admin
+                  key: password
+            {{- end }}
+          securityContext:
+            {{- toYaml .Values.studio.securityContext | nindent 12 }}
+          volumeMounts:
+            - name: studio-data
+              mountPath: /data
+      {{- end }}
+      containers:
+        - name: studio
+          securityContext:
+            {{- toYaml .Values.studio.securityContext | nindent 12 }}
+          image: {{ include "rstmdb.studioImage" . }}
+          imagePullPolicy: {{ .Values.studio.image.pullPolicy }}
+          env:
+            - name: RSTMDB_ADDR
+              value: {{ include "rstmdb.fullname" . }}:{{ .Values.service.port }}
+            - name: STUDIO_DATA_DIR
+              value: /data
+            {{- with .Values.studio.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+          resources:
+            {{- toYaml .Values.studio.resources | nindent 12 }}
+          volumeMounts:
+            - name: studio-data
+              mountPath: /data
+      volumes:
+        - name: studio-data
+          emptyDir: {}
+      {{- with .Values.studio.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.studio.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.studio.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

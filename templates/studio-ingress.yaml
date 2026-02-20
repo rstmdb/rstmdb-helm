@@ -1,0 +1,42 @@
+{{- if and .Values.studio.enabled .Values.studio.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "rstmdb.studioFullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "rstmdb.studioLabels" . | nindent 4 }}
+  {{- with .Values.studio.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if .Values.studio.ingress.className }}
+  ingressClassName: {{ .Values.studio.ingress.className }}
+  {{- end }}
+  {{- if .Values.studio.ingress.tls }}
+  tls:
+    {{- range .Values.studio.ingress.tls }}
+    - hosts:
+        {{- range .hosts }}
+        - {{ . | quote }}
+        {{- end }}
+      secretName: {{ .secretName }}
+    {{- end }}
+  {{- end }}
+  rules:
+    {{- range .Values.studio.ingress.hosts }}
+    - host: {{ .host | quote }}
+      http:
+        paths:
+          {{- range .paths }}
+          - path: {{ .path }}
+            pathType: {{ .pathType }}
+            backend:
+              service:
+                name: {{ include "rstmdb.studioFullname" $ }}
+                port:
+                  number: {{ $.Values.studio.service.port }}
+          {{- end }}
+    {{- end }}
+{{- end }}

@@ -234,3 +234,95 @@ extraVolumeMounts: []
 
 # Extra volumes
 extraVolumes: []
+
+# rstmdb Studio - Web UI
+studio:
+  # -- Enable rstmdb Studio deployment
+  enabled: false
+
+  image:
+    # -- Studio image registry
+    registry: ""
+    # -- Studio image repository
+    repository: rstmdb/rstmdb-studio
+    # -- Studio image tag
+    tag: ""
+    # -- Studio image pull policy
+    pullPolicy: IfNotPresent
+
+  # -- Number of Studio replicas
+  replicaCount: 1
+
+  # Admin user initialization
+  init:
+    # -- Create admin user via init container
+    enabled: true
+    # -- Admin username
+    username: admin
+    # -- Admin password (change in production!)
+    password: admin
+    # -- Use existing secret for admin credentials (keys: username, password)
+    existingSecret: ""
+
+  # Service configuration
+  service:
+    # -- Studio service type
+    type: ClusterIP
+    # -- Studio service port
+    port: 8080
+    # -- Node port (only if type is NodePort)
+    nodePort: ""
+    # -- Additional annotations
+    annotations: {}
+
+  # Ingress configuration
+  ingress:
+    # -- Enable Studio Ingress
+    enabled: false
+    # -- Ingress class name
+    className: ""
+    # -- Additional annotations
+    annotations: {}
+    # -- Ingress hosts
+    hosts:
+      - host: studio.rstmdb.local
+        paths:
+          - path: /
+            pathType: Prefix
+    # -- TLS configuration
+    tls: []
+
+  # Resource limits and requests
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+
+  # Security context for the studio container
+  securityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: false
+    capabilities:
+      drop:
+        - ALL
+
+  # -- Additional pod annotations
+  podAnnotations: {}
+
+  # -- Additional pod labels
+  podLabels: {}
+
+  # -- Node selector
+  nodeSelector: {}
+
+  # -- Tolerations
+  tolerations: []
+
+  # -- Affinity rules
+  affinity: {}
+
+  # -- Extra environment variables
+  extraEnv: []

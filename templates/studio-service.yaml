@@ -1,0 +1,25 @@
+{{- if .Values.studio.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "rstmdb.studioFullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "rstmdb.studioLabels" . | nindent 4 }}
+  {{- with .Values.studio.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.studio.service.type }}
+  ports:
+    - name: http
+      port: {{ .Values.studio.service.port }}
+      targetPort: http
+      protocol: TCP
+      {{- if and (eq .Values.studio.service.type "NodePort") .Values.studio.service.nodePort }}
+      nodePort: {{ .Values.studio.service.nodePort }}
+      {{- end }}
+  selector:
+    {{- include "rstmdb.studioSelectorLabels" . | nindent 4 }}
+{{- end }}
