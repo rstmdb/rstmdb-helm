@@ -12,11 +12,19 @@ on:
 permissions:
   contents: write
   pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
 
 jobs:
   release:
     name: Release Helm Chart
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Checkout main
         uses: actions/checkout@v4
@@ -50,36 +58,39 @@ jobs:
 
       - name: Package chart
         if: steps.check_release.outputs.exists == 'false'
-        run: |
-          helm package .
-          mkdir -p .cr-release-packages
-          mv ${{ steps.chart.outputs.name }}-${{ steps.chart.outputs.version }}.tgz .cr-release-packages/
+        run: helm package .
 
-      - name: Checkout gh-pages
-        if: steps.check_release.outputs.exists == 'false'
-        uses: actions/checkout@v4
-        with:
-          ref: gh-pages
-          path: gh-pages
-          fetch-depth: 0
-
-      - name: Create gh-pages branch if not exists
+      - name: Prepare Pages site
         if: steps.check_release.outputs.exists == 'false'
         run: |
-          cd gh-pages || mkdir -p gh-pages
-          if [ ! -f index.yaml ]; then
-            echo "Creating initial index.yaml"
+          mkdir -p site
+
+          # Fetch existing index and packages from gh-pages if it exists
+          if git ls-remote --heads origin | grep -q "refs/heads/gh-pages"; then
+            git fetch origin gh-pages
+            git checkout origin/gh-pages -- . 2>/dev/null || true
+            # Move any existing .tgz and index.yaml into site/
+            cp *.tgz site/ 2>/dev/null || true
+            cp index.yaml site/ 2>/dev/null || true
+            git checkout main -- . 2>/dev/null || true
           fi
 
-      - name: Update Helm repo index
+          # Copy new package
+          cp ${{ steps.chart.outputs.name }}-${{ steps.chart.outputs.version }}.tgz site/
+
+          # Rebuild index
+          helm repo index site/ --url https://charts.rstmdb.com
+
+      - name: Upload Pages artifact
         if: steps.check_release.outputs.exists == 'false'
-        run: |
-          cp .cr-release-packages/*.tgz gh-pages/
-          cd gh-pages
-          helm repo index . --url https://charts.rstmdb.com
-          git add .
-          git commit -m "Release ${{ steps.chart.outputs.name }}-${{ steps.chart.outputs.version }}"
-          git push
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site/
+
+      - name: Deploy to GitHub Pages
+        if: steps.check_release.outputs.exists == 'false'
+        id: deployment
+        uses: actions/deploy-pages@v4
 
       - name: Create GitHub Release
         if: steps.check_release.outputs.exists == 'false'
@@ -87,7 +98,7 @@ jobs:
         with:
           tag_name: ${{ steps.chart.outputs.name }}-${{ steps.chart.outputs.version }}
           name: ${{ steps.chart.outputs.name }}-${{ steps.chart.outputs.version }}
-          files: .cr-release-packages/*.tgz
+          files: ${{ steps.chart.outputs.name }}-${{ steps.chart.outputs.version }}.tgz
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
