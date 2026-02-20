@@ -5,9 +5,10 @@ on:
     branches:
       - main
     paths:
-      - 'Chart.yaml'
-      - 'values.yaml'
-      - 'templates/**'
+      - "Chart.yaml"
+      - "values.yaml"
+      - "templates/**"
+      - ".github/workflows/*.yaml"
 
 permissions:
   contents: write
