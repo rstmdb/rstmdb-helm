@@ -6,6 +6,30 @@ To get the status of your deployment:
 
   kubectl get pods -l "app.kubernetes.io/name={{ include "rstmdb.name" . }},app.kubernetes.io/instance={{ .Release.Name }}" -n {{ .Release.Namespace }}
 
+{{- if .Values.replication.enabled }}
+
+============================================================================
+ REPLICATION ENABLED ({{ .Values.replication.mode }} mode)
+============================================================================
+
+  Topology: pod-0 is the PRIMARY, pods 1..{{ sub (int .Values.replicaCount) 1 }} are REPLICAS.
+  {{- if lt (int .Values.replicaCount) 2 }}
+
+  WARNING: replicaCount={{ .Values.replicaCount }} — no replicas will be created.
+           Set replicaCount >= 2 (1 primary + N replicas).
+  {{- end }}
+
+  Writes -> {{ include "rstmdb.fullname" . }}  (primary Service, routes to pod-0)
+  {{- if .Values.replication.readService }}
+  Reads  -> {{ include "rstmdb.readServiceName" . }}  (read Service, all pods)
+  {{- end }}
+
+  Check replication status from the primary:
+
+    kubectl exec -n {{ .Release.Namespace }} {{ include "rstmdb.primaryPodName" . }} -- \
+      rstmdb-cli -s localhost:{{ .Values.service.port }} replication-status
+{{- end }}
+
 {{- if eq .Values.service.type "ClusterIP" }}
 
 To connect to rstmdb from within the cluster:

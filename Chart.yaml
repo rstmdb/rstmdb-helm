@@ -2,7 +2,7 @@ apiVersion: v2
 name: rstmdb
 description: A Helm chart for rstmdb - a state machine database with WAL durability
 type: application
-version: 0.1.1
+version: 0.2.0
 appVersion: "latest"
 keywords:
   - rstmdb

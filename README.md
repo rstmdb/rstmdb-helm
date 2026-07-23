@@ -91,6 +91,34 @@ See [values.yaml](values.yaml) for the full list of configurable parameters.
 | `auth.tokenHashes` | List of SHA-256 token hashes | `[]` |
 | `auth.existingSecret` | Existing secret with tokens | `""` |
 
+### Replication
+
+Turns the StatefulSet into a **primary/replica cluster**: the ordinal-0 pod
+(`<release>-rstmdb-0`) runs as the **primary** (accepts writes and streams its
+WAL), and pods `1..N-1` run as **replicas** (read-only, catch up from the
+primary over the headless service). Set `replicaCount` to `1 + desired replicas`.
+
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `replication.enabled` | Enable primary/replica replication | `false` |
+| `replication.mode` | `async` (ack locally) or `sync` (wait for replica ACKs) | `async` |
+| `replication.sync.replicas` | ACKs required per write (sync mode) | `1` |
+| `replication.sync.timeoutMs` | ACK wait timeout in ms (sync mode) | `5000` |
+| `replication.auth.enabled` | Secure the replication stream with a shared token | `false` |
+| `replication.auth.token` | Shared plaintext token (primary accepts, replicas present) | `""` |
+| `replication.auth.existingSecret` | Existing secret (key `replication-token`) | `""` |
+| `replication.pollIntervalMs` | WAL tailer poll interval (server default if empty) | `""` |
+| `replication.heartbeatIntervalSecs` | Heartbeat interval (server default if empty) | `""` |
+| `replication.readService` | Create a read-only Service across all pods | `true` |
+
+When enabled, the chart wires up:
+
+- **`<release>-rstmdb`** — write Service, pinned to the **primary** pod. Send all writes here.
+- **`<release>-rstmdb-read`** — read Service, load-balanced across **all** pods (opt-out via `replication.readService=false`).
+- The bundled **Studio** connects to the write Service, so its Replication view shows the full topology and per-replica lag.
+
+> **Note:** replication requires `storage.persistence.enabled: true` (the default). Do **not** enable `storage.allowFlushAll` with replication — `FLUSH_ALL` does not replicate and the server refuses to start with both set.
+
 ### TLS Configuration
 
 | Parameter | Description | Default |
@@ -138,6 +166,27 @@ helm install rstmdb rstmdb/rstmdb -n rstmdb --create-namespace
 ```bash
 helm install rstmdb rstmdb/rstmdb -n rstmdb --create-namespace -f values-production.yaml
 ```
+
+### Replicated Cluster (1 primary + 2 replicas)
+
+```bash
+helm install rstmdb rstmdb/rstmdb -n rstmdb --create-namespace \
+  --set replicaCount=3 \
+  --set replication.enabled=true \
+  --set replication.mode=async \
+  --set replication.auth.enabled=true \
+  --set replication.auth.token=change-me
+```
+
+Writes go to the `rstmdb` Service (primary); reads can use `rstmdb-read` (all
+pods). Check status:
+
+```bash
+kubectl exec -n rstmdb rstmdb-0 -- rstmdb-cli -s localhost:7401 replication-status
+```
+
+For **synchronous** replication (writes wait for replica ACKs), add
+`--set replication.mode=sync --set replication.sync.replicas=1`.
 
 ### With Custom Values
 

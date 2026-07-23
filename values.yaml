@@ -20,8 +20,48 @@ image:
 # -- Image pull secrets for private registries
 imagePullSecrets: []
 
-# -- Number of replicas (for StatefulSet)
+# -- Number of pods in the StatefulSet.
+# When `replication.enabled=true`, pod-0 is the PRIMARY (accepts writes) and
+# pods 1..N-1 are REPLICAS (read-only, stream the WAL from the primary). Set
+# this to `1 + desired replicas` (e.g. 3 = 1 primary + 2 replicas). With
+# replication disabled, each pod is an independent standalone server.
 replicaCount: 1
+
+# Replication configuration.
+# Turns the StatefulSet into a primary/replica cluster: the ordinal-0 pod runs
+# as primary and the rest as replicas that connect to it over the headless
+# service. Requires `replicaCount >= 2` to actually have a replica.
+replication:
+  # -- Enable primary/replica replication
+  enabled: false
+  # -- Replication mode: "async" (writes ack locally) or "sync" (writes wait
+  # for replica ACKs before returning to the client)
+  mode: async
+  # Sync-mode settings (ignored when mode=async)
+  sync:
+    # -- Number of replica ACKs required before a write is acknowledged
+    replicas: 1
+    # -- Timeout (ms) to wait for the required ACKs before failing the write
+    timeoutMs: 5000
+  # Replication authentication. When enabled, a shared token secures the
+  # primary<->replica stream (the primary accepts it, replicas present it).
+  # NOTE: this is independent of client `auth` — but if client auth is on, the
+  # server also requires replication auth, so enable this too.
+  auth:
+    # -- Secure the replication stream with a shared token
+    enabled: false
+    # -- Shared plaintext token (primary accepts it; replicas present it).
+    # Ignored if `existingSecret` is set.
+    token: ""
+    # -- Use an existing secret instead of `token` (expects key `replication-token`)
+    existingSecret: ""
+  # -- Tailer poll interval (ms). Empty = server default.
+  pollIntervalMs: ""
+  # -- Heartbeat interval (seconds). Empty = server default.
+  heartbeatIntervalSecs: ""
+  # -- Create a separate read-only Service (`<fullname>-read`) load-balancing
+  # across all pods for read scale-out (writes must still go to the primary).
+  readService: true
 
 # Network configuration
 network:

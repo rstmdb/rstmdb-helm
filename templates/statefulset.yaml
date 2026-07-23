@@ -18,6 +18,9 @@ spec:
         {{- if and .Values.auth.required (not .Values.auth.existingSecret) .Values.auth.tokenHashes }}
         checksum/auth: {{ include (print $.Template.BasePath "/secret-auth.yaml") . | sha256sum }}
         {{- end }}
+        {{- if and .Values.replication.enabled .Values.replication.auth.enabled (not .Values.replication.auth.existingSecret) }}
+        checksum/replication: {{ include (print $.Template.BasePath "/secret-replication.yaml") . | sha256sum }}
+        {{- end }}
         {{- with .Values.podAnnotations }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
@@ -40,9 +43,55 @@ spec:
             {{- toYaml .Values.securityContext | nindent 12 }}
           image: {{ include "rstmdb.image" . }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- if .Values.replication.enabled }}
+          # Replication role is derived from the StatefulSet ordinal: pod-0 is
+          # the primary, all others are replicas that stream from it. The base
+          # config comes from the ConfigMap; role/upstream are injected here as
+          # env overrides (applied on top of the config file by the server).
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+              ORDINAL="${HOSTNAME##*-}"
+              if [ "$ORDINAL" = "0" ]; then
+                export RSTMDB_REPL_ROLE=primary
+                echo "rstmdb: starting as PRIMARY (ordinal $ORDINAL)"
+              else
+                export RSTMDB_REPL_ROLE=replica
+                export RSTMDB_REPL_UPSTREAM="{{ include "rstmdb.replicationUpstream" . }}"
+                echo "rstmdb: starting as REPLICA (ordinal $ORDINAL) upstream=$RSTMDB_REPL_UPSTREAM"
+              fi
+              exec rstmdb
+          {{- end }}
           env:
             - name: RSTMDB_CONFIG
               value: /etc/rstmdb/config.yaml
+            {{- if .Values.replication.enabled }}
+            - name: RSTMDB_REPL_MODE
+              value: {{ .Values.replication.mode | quote }}
+            {{- if eq .Values.replication.mode "sync" }}
+            - name: RSTMDB_REPL_SYNC_REPLICAS
+              value: {{ .Values.replication.sync.replicas | quote }}
+            - name: RSTMDB_REPL_SYNC_TIMEOUT_MS
+              value: {{ .Values.replication.sync.timeoutMs | quote }}
+            {{- end }}
+            {{- if .Values.replication.auth.enabled }}
+            - name: RSTMDB_REPL_AUTH_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "rstmdb.replicationAuthSecretName" . }}
+                  key: replication-token
+            {{- end }}
+            {{- with .Values.replication.pollIntervalMs }}
+            - name: RSTMDB_REPL_POLL_INTERVAL_MS
+              value: {{ . | quote }}
+            {{- end }}
+            {{- with .Values.replication.heartbeatIntervalSecs }}
+            - name: RSTMDB_REPL_HEARTBEAT_INTERVAL_SECS
+              value: {{ . | quote }}
+            {{- end }}
+            {{- end }}
             {{- with .Values.extraEnv }}
             {{- toYaml . | nindent 12 }}
             {{- end }}

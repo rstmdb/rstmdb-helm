@@ -82,6 +82,8 @@ spec:
             {{- toYaml .Values.studio.securityContext | nindent 12 }}
           image: {{ include "rstmdb.studioImage" . }}
           imagePullPolicy: {{ .Values.studio.image.pullPolicy }}
+          args:
+            - serve
           env:
             - name: RSTMDB_ADDR
               value: {{ include "rstmdb.fullname" . }}:{{ .Values.service.port }}

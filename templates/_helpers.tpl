@@ -119,6 +119,40 @@ Return the configmap name
 {{- end }}
 
 {{/*
+Name of the primary pod (StatefulSet ordinal 0) — used as the replication
+upstream and as the write-service selector.
+*/}}
+{{- define "rstmdb.primaryPodName" -}}
+{{- printf "%s-0" (include "rstmdb.fullname" .) }}
+{{- end }}
+
+{{/*
+Cluster-DNS address replicas dial to reach the primary, via the headless
+service: <primary-pod>.<headless>.<namespace>.svc.cluster.local:<rcp-port>
+*/}}
+{{- define "rstmdb.replicationUpstream" -}}
+{{- printf "%s.%s.%s.svc.cluster.local:7401" (include "rstmdb.primaryPodName" .) (include "rstmdb.headlessServiceName" .) .Release.Namespace }}
+{{- end }}
+
+{{/*
+Return the replication auth secret name
+*/}}
+{{- define "rstmdb.replicationAuthSecretName" -}}
+{{- if .Values.replication.auth.existingSecret }}
+{{- .Values.replication.auth.existingSecret }}
+{{- else }}
+{{- printf "%s-replication" (include "rstmdb.fullname" .) }}
+{{- end }}
+{{- end }}
+
+{{/*
+Read-only (all-pods) service name
+*/}}
+{{- define "rstmdb.readServiceName" -}}
+{{- printf "%s-read" (include "rstmdb.fullname" .) }}
+{{- end }}
+
+{{/*
 Return the studio fullname
 */}}
 {{- define "rstmdb.studioFullname" -}}

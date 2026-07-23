@@ -5,6 +5,9 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "rstmdb.labels" . | nindent 4 }}
+    {{- if .Values.replication.enabled }}
+    app.kubernetes.io/component: primary
+    {{- end }}
   {{- with .Values.service.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
@@ -24,7 +27,34 @@ spec:
       {{- end }}
   selector:
     {{- include "rstmdb.selectorLabels" . | nindent 4 }}
+    {{- if .Values.replication.enabled }}
+    # Writes must go to the primary only — pin this Service to the ordinal-0 pod.
+    statefulset.kubernetes.io/pod-name: {{ include "rstmdb.primaryPodName" . }}
+    {{- end }}
 ---
+{{- if and .Values.replication.enabled .Values.replication.readService }}
+# Read-only Service: load-balances across ALL pods (primary + replicas) for
+# read scale-out. Writes will be rejected on replicas — use the primary Service
+# ({{ include "rstmdb.fullname" . }}) for writes.
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "rstmdb.readServiceName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "rstmdb.labels" . | nindent 4 }}
+    app.kubernetes.io/component: read
+spec:
+  type: ClusterIP
+  ports:
+    - name: rcp
+      port: {{ .Values.service.port }}
+      targetPort: rcp
+      protocol: TCP
+  selector:
+    {{- include "rstmdb.selectorLabels" . | nindent 4 }}
+---
+{{- end }}
 {{- if .Values.metrics.enabled }}
 apiVersion: v1
 kind: Service
